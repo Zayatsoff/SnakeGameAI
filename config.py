@@ -1,0 +1,13 @@
+# Colour palette
+SNAKE_COL = "#2D4263"
+BG_COL = "#191919"
+FOOD_COL = "#C84B31"
+SCORE_COL = "#ECDBBA"
+
+# Display
+WIDTH, HEIGHT = 600, 400
+SCORE_FONT = ["Consolas", 20]
+
+# Snake
+SNAKE_SIZE = 10
+SNAKE_SPEED = 15
