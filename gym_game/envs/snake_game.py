@@ -9,7 +9,7 @@ class SnakeGame:
         self.clock = pygame.time.Clock()
         self.init_render = False
         self.start_game()
-        self.main_loop(player, action)
+        # self.main_loop(player, action)
 
     def print_score(self, score):
         self.text = pygame.font.SysFont(c.SCORE_FONT[0], c.SCORE_FONT[1]).render(
@@ -92,12 +92,12 @@ class SnakeGame:
 
         obs = np.zeros((c.WIDTH, c.HEIGHT, 3), dtype="bool")
 
-        obs[self.x, self.y, 0] = True
+        obs[int(self.x), int(self.y), 0] = True
 
-        for part in self.self.snake_pixels:
+        for part in self.snake_pixels:
             obs[int(part[0]), int(part[1]), 1] = True
 
-        obs[self.target_x, self.target_y, 2] = True
+        obs[int(self.target_x), int(self.target_y), 2] = True
 
         return obs
 
@@ -155,34 +155,34 @@ class SnakeGame:
 
     def main_loop(self, player, action):
         # main game loop
-        while not self.game_over:
+        # while not self.game_over:
 
-            # restarts game
-            while self.restart:
-                self.reset()
+        #     # restarts game
+        #     while self.restart:
+        #         self.reset()
 
-            # main loop
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.game_over = True
-                self.make_action(player, event, action)
+        # main loop
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.game_over = True
+            self.make_action(player, event, action)
 
-            self.x += self.x_speed
-            self.y += self.y_speed
+        self.x += self.x_speed
+        self.y += self.y_speed
 
-            # check death
-            if self.check_death():
-                self.restart = True
+        # check death
+        if self.check_death():
+            self.restart = True
 
-            # if snake eats food
-            if self.check_food():
-                self.spawn_food()
-                self.snake_length += 1
+        # if snake eats food
+        if self.check_food():
+            self.spawn_food()
+            self.snake_length += 1
 
-            self.render()
+        self.render()
 
-        pygame.quit()
-        quit()
+        # pygame.quit()
+        # quit()
 
 
 # SnakeGame(player="human")

@@ -2,7 +2,7 @@ import time
 import gym
 from gym import spaces
 import numpy as np
-from snake_game import SnakeGame
+from gym_game.envs.snake_game import SnakeGame
 import config as c
 
 
@@ -23,13 +23,16 @@ class SnakeEnv(gym.Env):
         self.game = SnakeGame(player="agent")
 
     def step(self, action):
-        self.game.main_loop(action)
+        self.game.main_loop(player="agent", action=action)
+        print(self.game.check_death())
+        if self.game.check_death():
+            reward = -1
+            self.steps_without_apple = 0
+            print("dead 1")
 
         if self.game.check_food():
             reward = 1
             self.steps_without_food = 0
-        elif self.game.check_death():
-            reward = -1
         else:
             reward = 0
             self.steps_without_food += 1
@@ -42,7 +45,7 @@ class SnakeEnv(gym.Env):
 
     def reset(self):
         self.game.reset()
-        self.explored = np.zeros_like(self.explored)
+        # self.explored = np.zeros_like(self.explored)
         self.steps_without_food = 0
         return self.game.get_state()
 
