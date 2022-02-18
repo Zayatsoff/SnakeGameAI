@@ -5,6 +5,8 @@ from collections import deque
 import itertools
 import numpy as np
 import random
+import torch.nn.functional as F
+import torch.optim as optim
 
 GAMMA = 0.99
 BATCH_SIZE = 32
@@ -23,7 +25,7 @@ class Network(nn.Module):
         in_features = int(np.prod(env.observation_space.shape))
 
         self.net = nn.Sequential(
-            nn.Linear(in_features, 64), nn.Tahn(), nn.Lnear(64, env.action_space.n)
+            nn.Linear(in_features, 64), nn.Tanh(), nn.Linear(64, env.action_space.n)
         )
 
     def forward(self, x):
@@ -34,7 +36,7 @@ class Network(nn.Module):
         q_values = self(obs_t.unsqueeze(0))
 
         max_q_index = torch.argmax(q_values, dim=1)[0]
-        axtion = max_q_index.detach().item
+        action = max_q_index.detach().item
         return action
 
 
@@ -50,8 +52,10 @@ target_net = Network(env)
 
 target_net.load_state_dict(online_net.state_dict())
 
+optimizer = optim.Adam(online_net.parameters(), lr=5e-4)
+
 # init replay buffer
-obs = env.restet()
+obs = env.reset()
 for _ in range(MIN_REPLAY_SIZE):
     action = env.action_space.sample()
 
@@ -98,9 +102,36 @@ new_obses = np.asarray(t[4] for t in transitions)
 
 transitions_t = torch.as_tensor(obses, dtype=torch.float32)
 obses_t = torch.as_tensor(obses, dtype=torch.float32)
-actions_t = torch.as_tensor(obses, dtype=torch.int64)
-rewards_t = torch.as_tensor(obses, dtype=torch.float32)
-dones_t = torch.as_tensor(obses, dtype=torch.float32)
+actions_t = torch.as_tensor(obses, dtype=torch.int64).unsqueeze(-1)
+rewards_t = torch.as_tensor(obses, dtype=torch.float32).unsqueeze(-1)
+dones_t = torch.as_tensor(obses, dtype=torch.float32).unsqueeze(-1)
 new_obses_t = torch.as_tensor(obses, dtype=torch.float32)
 
 # compute targets
+target_q_values = target_net(new_obses_t)
+max_target_q_values = target_q_values.max(dim=1, keepdim=True)[0]
+
+targets = rewards_t + GAMMA * (1 - dones_t) * max_target_q_values
+
+# compute_loss
+q_values = online_net(obses_t)
+
+action_q_values = torch.gather(input=q_values, dim=1, index=actions_t)
+
+loss = F.smooth_l1_loss(action_q_values, targets)
+
+# gradeint descent
+
+optimizer.zero_grad
+loss.backward()
+optimizer.step()
+
+# update target network
+if step % TARGET_UPDATE_INTERVAL == 0:
+    target_net.load_state_dict(online_net.state_dict())
+
+    # logging
+    if step % 1000 == 0:
+        print()
+        print("Step: ", step)
+        print("Avg reward: ", np.mean(reward_buffer))
