@@ -7,29 +7,49 @@ import numpy as np
 # this implemetation only has replay memory network no target network
 
 
-class DeepQNetwork(nn.Module):
-    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions):
-        super(DeepQNetwork, self).__init__()
-        self.input_dims = input_dims
-        self.fc1_dims = fc1_dims
-        self.fc2_dims = fc2_dims
-        self.n_actions = n_actions
+class DQN(nn.Module):
+    def __init__(self, input_dims, n_actions):
+        """
+        Initialize a deep Q-learning network as described in
+        https://storage.googleapis.com/deepmind-data/assets/papers/DeepMindNature14236Paper.pdf
+        Arguments:
+            in_channels: number of channel of input.
+                i.e The number of most recent frames stacked together as describe in the paper
+            num_actions: number of action-value to output, one-to-one correspondence to action in game.
+        """
+        super(DQN, self).__init__()
+        self.conv1 = nn.Conv2d(input_dims, 32, kernel_size=8, stride=4)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
+        self.fc4 = nn.Linear(7 * 7 * 64, 512)
+        self.fc5 = nn.Linear(512, n_actions)
 
-        self.fc1 = nn.Linear(*self.input_dims, self.fc1_dims)
-        self.fc2 = nn.Linear(self.fc1_dims, self.fc2_dims)
-        self.fc3 = nn.Linear(self.fc2_dims, self.n_actions)
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.fc4(x.view(x.size(0), -1)))
+        return self.fc5(x)
 
-        self.optimizer = optim.Adam(self.parameters(), lr=lr)
-        self.loss = nn.MSELoss()
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.to(self.device)
 
-    def forward(self, state):
-        x = F.relu(self.fc1(state))
+class DQN_RAM(nn.Module):
+    def __init__(self, input_dims, n_actions):
+        """
+        Initialize a deep Q-learning network for testing algorithm
+            in_features: number of features of input.
+            num_actions: number of action-value to output, one-to-one correspondence to action in game.
+        """
+        super(DQN_RAM, self).__init__()
+        self.fc1 = nn.Linear(input_dims, 256)
+        self.fc2 = nn.Linear(256, 128)
+        self.fc3 = nn.Linear(128, 64)
+        self.fc4 = nn.Linear(64, n_actions)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        actions = self.fc3(x)
-
-        return actions
+        x = F.relu(self.fc3(x))
+        return self.fc4(x)
 
 
 class Agent:
@@ -55,10 +75,10 @@ class Agent:
         self.batch_size = batch_size
         self.mem_cntr = 0
 
-        self.Q_eval = DeepQNetwork(
+        self.Q_eval = DQN(
             self.lr,
             n_actions=n_actions,
-            input_dims=input_dims,
+            input_dims=3,
             fc1_dims=256,
             fc2_dims=256,
         )

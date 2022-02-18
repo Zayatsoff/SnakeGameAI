@@ -31,7 +31,7 @@ if __name__ == "__main__":
         batch_size=BATCH_SIZE,
         n_actions=N_ACTIONS,
         eps_end=0.01,
-        input_dims=[3],
+        input_dims=3,
         lr=LR,
     )
     print("3")
