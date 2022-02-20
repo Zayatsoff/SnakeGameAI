@@ -41,7 +41,7 @@ for episode in range(EPISODES):
     while not done:
 
         if np.random.random() > EPSILON:
-            action = np.argmax(q_table[discrete_state.n])
+            action = np.argmax(q_table[env.action_space.n])
         action = action = np.argmax(q_table[discrete_state])
         new_state, reward, done, _ = env.step(action)
         new_discrete_state = get_discrete_state(new_state)
