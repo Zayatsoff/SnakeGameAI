@@ -1,8 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
 
 """Loss: mse, optim = Ama, lr=0.001, metric = accuracy"""
+LEARNING_RATE = 0.001
 
 
 class DQN(nn.Module):
@@ -28,4 +30,10 @@ class DQN(nn.Module):
 
 class DQNAgent:
     def __init__(self):
+        # main model
         self.model = DQN()
+        self.optim = optim.Adam(self.model.parameters, lr=LEARNING_RATE)
+        self.loss_function = nn.MSELoss()
+        # target model
+        self.target_model = DQN()
+        self.target_model.load_state_dict(self.model.state_dict())
