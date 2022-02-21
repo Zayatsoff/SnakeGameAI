@@ -70,6 +70,7 @@ class Blob:
             self.y = SIZE - 1
 
 
+episode_rewards = []
 if start_q_table is None:
     q_table = {}
     for x1 in range(-SIZE + 1, SIZE):
@@ -90,3 +91,40 @@ for episode in range(EPISODES):
 
     if episode % SHOW_EVERY == 0:
         print(f"on # {episode}, epsilon: {EPSILON}")
+        print(f"{SHOW_EVERY} ep mean {np.mean(episode_rewards[SHOW_EVERY:])}-")
+        show = True
+    else:
+        show = False
+
+    episode_reward = 0
+    for i in range(200):
+        obs = (player - food, player - enemy)
+        if np.random.random() > EPSILON:
+            action = np.argmax(q_table[obs])
+        else:
+            action = np.random.randint(0, 4)
+        player.action(action)
+
+        ### later
+        # enemy.move()
+        # food.move()
+
+    if player.x == enemy.y and player.y == enemy.y:
+        reward = -ENEMY_PENALTY
+    elif player.x == food.x and player.y == food.y:
+        reward = FOOD_REWARD
+    else:
+        reward = -MOVE_PENALTY
+    new_obs = (player - food, player - enemy)
+    max_future_q = np.max(q_table[new_obs])
+    current_q = q_table[obs][action]
+
+    if reward == FOOD_REWARD:
+        new_q = FOOD_REWARD
+    elif reward == -ENEMY_PENALTY:
+        new_q = -ENEMY_PENALTY
+    else:
+        new_q = (1 - LEARNING_RATE) * current_q + LEARNING_RATE * (
+            reward + DISCOUNT * max_future_q
+        )
+    q_table[obs][action] = new_q
