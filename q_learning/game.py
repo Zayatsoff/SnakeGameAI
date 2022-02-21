@@ -14,11 +14,11 @@ MOVE_PENALTY = 1
 ENEMY_PENALTY = 300
 FOOD_REWARD = 25
 
-EPSILON = 0.9
+EPSILON = 0.0
 EPS_DECAY = 0.9998
 SHOW_EVERY = 3000
 
-start_q_table = None
+start_q_table = "qtable-1645422671.pickle"
 
 LEARNING_RATE = 0.1
 DISCOUNT = 0.95
@@ -39,17 +39,17 @@ class Blob:
         return f"{self.x}, {self.y}"
 
     def __sub__(self, other):
-        return f"{self.x-other.x}, {self.y-other.y}"
+        return (self.x - other.x, self.y - other.y)
 
     def action(self, choice):
         if choice == 0:
-            self.move(x=1, y=1)
+            self.move(x=1, y=0)
         elif choice == 1:
-            self.move(x=-1, y=-1)
+            self.move(x=0, y=-1)
         elif choice == 2:
-            self.move(x=-1, y=1)
+            self.move(x=-1, y=0)
         elif choice == 3:
-            self.move(x=1, y=-1)
+            self.move(x=0, y=1)
 
     def move(self, x=False, y=False):
         if not x:
@@ -137,13 +137,13 @@ for episode in range(EPISODES):
             env[enemy.y][enemy.x] = d[ENEMY_N]
 
             img = Image.fromarray(env, "RGB")
-            img = img.resize((300, 300))
+            img = img.resize((300, 300), resample=Image.BOX)
             cv2.imshow("", np.array(img))
             if reward == FOOD_REWARD or reward == -ENEMY_PENALTY:
-                if cv2.waitkey(500) & 0xFF == ord("q"):
+                if cv2.waitKey(500) & 0xFF == ord("q"):
                     break
             else:
-                if cv2.waitkey(1) & 0xFF == ord("q"):
+                if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
         episode_reward += reward
         if reward == FOOD_REWARD or reward == -ENEMY_PENALTY:
@@ -151,7 +151,7 @@ for episode in range(EPISODES):
     episode_rewards.append(episode_reward)
     EPSILON *= EPS_DECAY
 moving_avg = np.convolve(
-    episode_rewards, np.ones((SHOW_EVERY,)) / SHOW_EVERY, model="valid"
+    episode_rewards, np.ones((SHOW_EVERY,)) / SHOW_EVERY, mode="valid"
 )
 plt.plot([i for i in range(len(moving_avg))], moving_avg)
 plt.ylabel(f"reward {SHOW_EVERY}ma")
