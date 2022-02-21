@@ -1,10 +1,13 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from collections import deque
 
 """Loss: mse, optim = Ama, lr=0.001, metric = accuracy"""
 LEARNING_RATE = 0.001
+REPLAY_MEMORY_SIZE = 50_000
 
 
 class DQN(nn.Module):
@@ -37,3 +40,14 @@ class DQNAgent:
         # target model
         self.target_model = DQN()
         self.target_model.load_state_dict(self.model.state_dict())
+
+        self.replay_memory = deque(maxlen=REPLAY_MEMORY_SIZE)
+        self.targett_update_counter = 0.001
+        # self.tensorboard = ModifiedTensorBorad(log_dir=f"logs/{MODEL_NAME}-{int(time.time())}")
+        # MTB is bc tensorboard updates every .fit but we doing many .fits so we only want 1 log file
+
+    def update_replay_memory(self, transition):
+        self.replay_memory.append(transition)
+
+    def get_qs(self, state, step):
+        return self.model_predict(np.array(state).reshape(-1, *state.shape) / 255)[0]
