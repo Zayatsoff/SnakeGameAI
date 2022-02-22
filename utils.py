@@ -66,15 +66,15 @@ def compute_accuracy(model, data_loader, device):
 
 class TensorBoardLogger(object):
     """
-    Originally from https://gist.github.com/gyglim/1f8dfb1b5c82627ae3efcfbbadb9f514, rewritten to work with troch tensorboard
+    Originally from https://gist.github.com/gyglim/1f8dfb1b5c82627ae3efcfbbadb9f514, rewritten to work with torch tensorboard
     """
 
     def __init__(self, log_dir):
-        """Create a summary writer logging to log_dir."""
+        """Create action summary writer logging to log_dir."""
         self.writer = SummaryWriter(log_dir)
 
     def scalar_summary(self, tag, step, value):
-        """Log a scalar variable."""
+        """Log action scalar variable."""
         self.writer.add_scalar(tag, value, step)
 
 
@@ -88,34 +88,40 @@ class ReplayBuffer(object):
         self.capacity = capacity
         self.buffer = []
 
-    def add(self, s0, a, r, s1, done):
+    def add(self, state, action, reward, next_state, done):
         if len(self.buffer) >= self.capacity:
             self.buffer.pop(0)
-        self.buffer.append((s0[None, :], a, r, s1[None, :], done))
+        self.buffer.append((state[None, :], action, reward, next_state[None, :], done))
 
     def sample(self, batch_size):
-        s0, a, r, s1, done = zip(*random.sample(self.buffer, batch_size))
-        return np.concatenate(s0), a, r, np.concatenate(s1), done
+        state, action, reward, next_state, done = zip(
+            *random.sample(self.buffer, batch_size)
+        )
+        return np.concatenate(state), action, reward, np.concatenate(next_state), done
 
     def size(self):
         return len(self.buffer)
 
 
 class train_dqn:
+    """
+    Adapted from  https://github.com/blackredscarf
+    """
+
     def __init__(self, agent, env, config):
         self.agent = agent
         self.env = env
         self.config = config
 
-        self.epsilon_final = self.config.epsilon_min
-        self.epsilon_start = self.config.epsilon
-        self.epsilon_decay = self.config.eps_decay
+        self.epsilon_final = self.config["epsilon_min"]
+        self.epsilon_start = self.config["epsilon"]
+        self.epsilon_decay = self.config["eps_decay"]
         self.epsilon = self.epsilon_start
 
-        self.outdir = self.config.model_path
-        self.logger = TensorBoardLogger(self.outputdir)
+        self.outdir = self.config["model_path"]
+        self.logger = TensorBoardLogger(self.outdir)
 
-    def Train(self):
+    def train(self):
         losses = []
         all_rewards = []
         episode_reward = 0
@@ -123,41 +129,42 @@ class train_dqn:
         is_win = True
 
         state = self.env.reset()
-        for episode in self.config.episodes:
+        for episode in range(1, self.config["episodes"]):
             action = self.agent.act(state, self.epsilon)
 
             next_state, reward, done, _ = self.env.step(action)
-            self.agent.buffer.add(state, action, reward, next_state, done)  # TODO: this
+            self.agent.buffer.add(state, action, reward, next_state, done)
 
             state = next_state
             episode_reward += reward
             loss = 0
 
-            if self.agent.buffer.size() > self.config.batch_size:
+            if self.agent.buffer.size() > self.config["batch_size"]:
                 loss = self.agent.learning(episode)
                 losses.append(loss)
                 self.logger.scalar_summary("Loss per episode", episode, loss)
 
-            if episode % self.config.print_interval == 0:
+            if episode % self.config["print_interval"] == 0:
                 print(
                     "episode: %5d, reward: %5f, loss: %4f episode: %4d"
                     % (episode, np.mean(all_rewards[-10:]), loss, episode)
                 )
 
-            if episode % self.config.log_interval == 0:
+            if episode % self.config["log_interval"] == 0:
                 self.logger.scalar_summary(
                     "Reward per episode", episode, all_rewards[-1]
                 )  # TODO
 
             if (
-                self.config.checkpoint
-                and episode % self.config.checkpoint_interval == 0
+                self.config["checkpoint"]
+                and episode % self.config["checkpoint_interval"] == 0
             ):
-                self.agent.save_checkpoint(self.agent, self.config.learning_rate)
+                self.agent.save_checkpoint(self.agent, episode)
 
             if done:
                 state = self.env.reset()
-                all_rewards = 0
+                all_rewards.append(episode_reward)
+                episode_reward = 0
                 ep_num += 1
                 avg_reward = float(np.mean(all_rewards[-100:]))
                 self.logger.scalar_summary(
@@ -166,8 +173,8 @@ class train_dqn:
 
                 if (
                     len(all_rewards) >= 100
-                    and avg_reward >= self.config.win_reward
-                    and all_rewards[-1] > self.config.win_reward
+                    and avg_reward >= self.config["win_reward"]
+                    and all_rewards[-1] > self.config["win_reward"]
                 ):
                     is_win = True
                     self.agent.save_model(self.outdir, "best")
@@ -175,12 +182,65 @@ class train_dqn:
                         "Episodes in total: %d  \n100-episodes average reward: %3f \n%d trials"
                         % (episode, avg_reward, episode - 100)
                     )
-                    if self.config.win_break:
+                    if self.config["win_break"]:
                         break
 
         if not is_win:
             print("Did not solve after %d episodes" % episode)
             self.agent.save_model(self.outdir, "last")
+
+
+class test_dqn:
+    def __init__(
+        self,
+        agent,
+        env,
+        filename,
+        config,
+        num_episodes=50,
+        max_ep_steps=400,
+        test_ep_steps=100,
+    ):
+        self.num_episodes = num_episodes
+        self.max_ep_steps = max_ep_steps
+        self.test_ep_steps = test_ep_steps
+        self.agent = agent
+        self.env = env
+        self.agent.is_training = False
+        load_checkpoint(
+            filename, self.agent, agent.model_optim, config["learning_rate"]
+        )
+        self.policy = lambda x: agent.act(x)
+
+    def test(self, debug=False, render=True):
+        avg_reward = 0
+        for episode in range(self.num_episodes):
+            state = self.env.reset()
+            episode_steps = 0
+            episode_reward = 0.0
+
+            done = False
+            while not done:
+                if render:
+                    self.env.render()
+
+                action = self.policy(state)
+                state, reward, done, _ = self.env.step(action)
+                episode_reward += reward
+                episode_steps += 1
+
+                if episode_steps + 1 > self.test_ep_steps:
+                    done = True
+
+            if debug:
+                print(
+                    "[Test] episode: %3d, episode_reward: %5f"
+                    % (episode, episode_reward)
+                )
+
+            avg_reward += episode_reward
+        avg_reward /= self.num_episodes
+        print("avg reward: %5f" % (avg_reward))
 
 
 # Classification
