@@ -11,8 +11,11 @@ from dqn import CNNDQNAgent
 from utils import train_dqn, test_dqn
 import gym
 
-# Keep getting a "Expected 4-dimensional input for 4-dimensional weight [256, 2, 3, 3], but got 2-dimensional input of size [32, 2] instead" error.
-# the tensor changes depanding on env, how do I get it to work. TODO: Look at existing solutions, see where I went wrong.
+"""
+ Keep getting a "Expected 4-dimensional input for 4-dimensional weight [256, 2, 3, 3], but got 2-dimensional input of size [32, 2] instead" error.
+ the tensor changes depanding on env, how do I get it to work. TODO: Look at existing solutions, see where I went wrong: ppl using CNNDQN to solve gym env.
+"""
+
 
 # dictionairy
 config = {
