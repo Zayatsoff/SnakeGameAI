@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from torch import nn
 import itertools
-from baselines_wrappers import DummyVecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv
 from pytorch_wrappers import make_atari_deepmind, BatchedPytorchFrameStack, PytorchLazyFrames
 import time
 
