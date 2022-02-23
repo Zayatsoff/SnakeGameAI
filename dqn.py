@@ -11,7 +11,7 @@ import random
 # from baselines_wrappers.monitor import Monitor
 
 # from baselines_wrappers.subproc_vec_env import SubprocVecEnv
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 
 from stable_baselines3.common.monitor import Monitor
 
@@ -58,7 +58,7 @@ def nature_cnn(obs_space, depths=(32, 64, 64), final_layer=512):
     # compute shape by doing one forward pass
     with torch.no_grad():
         n_flatten = cnndqn(torch.as_tensor(obs_space.sample()[None]).float()).shape[1]
-        out = nn.Sequential(cnndqn, nn.Linear(n_flatten, final_layer), nn.Relu())
+        out = nn.Sequential(cnndqn, nn.Linear(n_flatten, final_layer), nn.ReLU())
         return out
 
 
@@ -66,7 +66,7 @@ class Network(nn.Module):
     def __init__(self, env, device):
         super().__init__()
         conv_net = nature_cnn(env.observation_space)
-        self.num_actions = env.action_spaces.n
+        self.num_actions = env.action_space.n
         self.net = nn.Sequential(conv_net, nn.Linear(512, self.num_actions))
         self.device = device
 
@@ -74,7 +74,7 @@ class Network(nn.Module):
         return self.net(x)
 
     def act(self, obses, epsilon):
-        obses_t = torch.as_tensor(obs, dtype=torch.float32, device=self.device)
+        obses_t = torch.as_tensor(obses, dtype=torch.float32, device=self.device)
         q_values = self(obses_t)
         max_q_indices = torch.argmax(q_values, dim=1)
         actions = max_q_indices.detach().tolist()
@@ -155,7 +155,7 @@ class Network(nn.Module):
 if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     make_env = lambda: Monitor(
-        make_atari_deepmind("BreakoutNoframeskip-v4", scale_values=True),
+        make_atari_deepmind("BreakoutNoFrameskip-v4", scale_values=True),
         allow_early_resets=True,
     )
     # vec_env = DummyVecEnv(
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     env = BatchedPytorchFrameStack(vec_env, k=4)
 
     replay_buffer = deque(maxlen=BUFFER_SIZE)
-    epinfos_buffer = deque([0.0], maxlen=100)
+    epinfos_buffer = deque([], maxlen=100)
 
     episode_count = 0
     summary_writer = SummaryWriter(LOG_DIR)
@@ -207,7 +207,7 @@ if __name__ == "__main__":
 
         if isinstance(obses[0], PytorchLazyFrames):
             act_obses = np.stack([o.get_frames() for o in obses])
-            actions = online_net.act(obses, epsilon)
+            actions = online_net.act(act_obses, epsilon)
 
         else:
             actions = online_net.act(obses, epsilon)
@@ -226,7 +226,7 @@ if __name__ == "__main__":
 
         # start gradient step
         transitions = random.sample(replay_buffer, BATCH_SIZE)
-        loss = online_net.comput_loss(transitions, target_net)
+        loss = online_net.compute_loss(transitions, target_net)
 
         # Gradient Descent
         optimizer.zero_grad()
