@@ -1,14 +1,10 @@
-import os
-from torch import nn
 import torch
-import gym
 from collections import deque
 import itertools
 import numpy as np
 import random
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
-import msgpack
 from dqn import Network
 from msgpack_numpy import patch as msgpack_numpy_patch
 from torch.utils.tensorboard import SummaryWriter
@@ -30,9 +26,11 @@ config = {
     "TARGET_UPDATE_FREQ": 10_000 / 4,
     "LR": 5e-5,
     "SAVE_PATH_EVERY": 10_000,
-    "SAVE_PATH": "./atari_model_pack",
+    "SAVE_PATH": "./atari_model.pack",
     "LOG_DIR": "./logs/atari_vanilla",
     "LOG_EVERY": 1_000,
+    "LOAD": True,
+    "DEBUGG": False,
 }
 msgpack_numpy_patch()
 
@@ -42,14 +40,13 @@ if __name__ == "__main__":
         make_atari_deepmind("BreakoutNoFrameskip-v4", scale_values=True),
         allow_early_resets=True,
     )
-    vec_env = DummyVecEnv(
-        [make_env for _ in range(config["NUM_ENVS"])]
-    )  # runs the env in sequence, debugging done here
-    # vec_env = SubprocVecEnv(
-    #     [make_env for _ in range(config["NUM_ENVS"])]
-    # )  # runs the env in parallel, training done here
-    # both reset env at the end
 
+    # Dummy runs the env in sequence whilst Subproc runs the env in parallel. Both reset env at the end.
+    vec_env = (
+        DummyVecEnv([make_env for _ in range(config["NUM_ENVS"])])
+        if config["DEBUGG"]
+        else SubprocVecEnv([make_env for _ in range(config["NUM_ENVS"])])
+    )
     env = BatchedPytorchFrameStack(vec_env, k=4)
 
     replay_buffer = deque(maxlen=config["BUFFER_SIZE"])
@@ -63,7 +60,8 @@ if __name__ == "__main__":
 
     online_net = online_net.to(device)
     target_net = target_net.to(device)
-
+    if config["LOAD"]:
+        online_net.load("./atari_model.pack")
     target_net.load_state_dict(online_net.state_dict())
 
     optimizer = torch.optim.Adam(online_net.parameters(), lr=config["LR"])
