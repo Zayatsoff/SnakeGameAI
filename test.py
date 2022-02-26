@@ -4,7 +4,7 @@ import itertools
 from stable_baselines3.common.vec_env import DummyVecEnv
 from dqn import Network
 from sneks.envs.snek import SingleSnek
-from pytorch_wrappers import (
+from utils.pytorch_wrappers import (
     make_atari_deepmind,
     make_deepmind,
     BatchedPytorchFrameStack,

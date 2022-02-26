@@ -7,7 +7,7 @@ from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 from sneks.envs.snek import SingleSnek
 from dqn import Network
-from msgpack_numpy import patch as msgpack_numpy_patch
+from utils.msgpack_numpy import patch as msgpack_numpy_patch
 from torch.utils.tensorboard import SummaryWriter
 from utils.pytorch_wrappers import (
     BatchedPytorchFrameStack,
