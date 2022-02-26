@@ -4,26 +4,36 @@ import gym
 import numpy as np
 
 from stable_baselines3.common.vec_env.base_vec_env import VecEnvWrapper
-from stable_baselines3.common.atari_wrappers import NoopResetEnv, MaxAndSkipEnv, EpisodicLifeEnv, \
-    ClipRewardEnv, WarpFrame
+from stable_baselines3.common.atari_wrappers import (
+    NoopResetEnv,
+    MaxAndSkipEnv,
+    EpisodicLifeEnv,
+    ClipRewardEnv,
+    WarpFrame,
+)
 from gym.wrappers import TimeLimit
 
 
 class ScaledFloatFrame(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
-        self.observation_space = gym.spaces.Box(low=0, high=1, shape=env.observation_space.shape, dtype=np.float32)
+        self.observation_space = gym.spaces.Box(
+            low=0, high=1, shape=env.observation_space.shape, dtype=np.float32
+        )
 
     def observation(self, observation):
         # careful! This undoes the memory optimization, use
         # with smaller replay buffers only.
         return np.array(observation).astype(np.float32) / 255.0
 
-def make_atari_deepmind(env_id, max_episode_steps=None, scale_values=False, clip_rewards=True):
-    env = gym.make(env_id)
+
+def make_atari_deepmind(
+    env_id, max_episode_steps=None, scale_values=False, clip_rewards=True
+):
+    env = gym.make(env_id).unwrapped
     env = NoopResetEnv(env, noop_max=30)
 
-    if 'NoFrameskip' in env.spec.id:
+    if "NoFrameskip" in env.spec.id:
         env = MaxAndSkipEnv(env, skip=4)
 
     if max_episode_steps is not None:
@@ -39,9 +49,38 @@ def make_atari_deepmind(env_id, max_episode_steps=None, scale_values=False, clip
     if clip_rewards:
         env = ClipRewardEnv(env)
 
-    env = TransposeImageObs(env, op=[2, 0, 1])  # Convert to torch order (C, H, W) required for conv to accept
+    env = TransposeImageObs(
+        env, op=[2, 0, 1]
+    )  # Convert to torch order (C, H, W) required for conv to accept
 
     return env
+
+
+def make_deepmind(
+    env_id, max_episode_steps=None, scale_values=False, clip_rewards=True
+):
+    # env = gym.make(env_id).unwrapped
+    env = env_id
+
+    if max_episode_steps is not None:
+        env = TimeLimit(env, max_episode_steps=max_episode_steps)
+
+    # env = EpisodicLifeEnv(env)
+
+    env = WarpFrame(env)
+
+    if scale_values:
+        env = ScaledFloatFrame(env)
+
+    if clip_rewards:
+        env = ClipRewardEnv(env)
+
+    env = TransposeImageObs(
+        env, op=[2, 0, 1]
+    )  # Convert to torch order (C, H, W) required for conv to accept
+
+    return env
+
 
 class TransposeImageObs(gym.ObservationWrapper):
     def __init__(self, env, op):
@@ -54,12 +93,9 @@ class TransposeImageObs(gym.ObservationWrapper):
         self.observation_space = gym.spaces.Box(
             self.observation_space.low[0, 0, 0],
             self.observation_space.high[0, 0, 0],
-            [
-                obs_shape[self.op[0]],
-                obs_shape[self.op[1]],
-                obs_shape[self.op[2]]
-            ],
-            dtype=self.observation_space.dtype)
+            [obs_shape[self.op[0]], obs_shape[self.op[1]], obs_shape[self.op[2]]],
+            dtype=self.observation_space.dtype,
+        )
 
     def observation(self, obs):
         return obs.transpose(self.op[0], self.op[1], self.op[2])
@@ -77,8 +113,12 @@ class BatchedPytorchFrameStack(VecEnvWrapper):
         self.k = k
         self.batch_stacks = [deque([], maxlen=k) for _ in range(env.num_envs)]
         shp = env.observation_space.shape
-        self.observation_space = gym.spaces.Box(low=0, high=255, shape=((shp[0] * k,) + shp[1:]),
-                                                dtype=env.observation_space.dtype)
+        self.observation_space = gym.spaces.Box(
+            low=0,
+            high=255,
+            shape=((shp[0] * k,) + shp[1:]),
+            dtype=env.observation_space.dtype,
+        )
         self.env = env
 
     def reset(self):
@@ -97,10 +137,14 @@ class BatchedPytorchFrameStack(VecEnvWrapper):
         return ret_ob, reward, done, info
 
     def _get_ob(self):
-        return [PytorchLazyFrames(list(batch_stack), axis=0) for batch_stack in self.batch_stacks]
+        return [
+            PytorchLazyFrames(list(batch_stack), axis=0)
+            for batch_stack in self.batch_stacks
+        ]
 
     def _transform_batched_frame(self, frame):
         return [f for f in frame]
+
 
 class PytorchLazyFrames(object):
     def __init__(self, frames, axis=0):

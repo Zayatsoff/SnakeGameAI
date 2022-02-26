@@ -8,11 +8,7 @@ from msgpack_numpy import patch as msgpack_numpy_patch
 
 msgpack_numpy_patch()
 
-from pytorch_wrappers import (
-    BatchedPytorchFrameStack,
-    PytorchLazyFrames,
-    make_atari_deepmind,
-)
+from pytorch_wrappers import PytorchLazyFrames
 
 
 def nature_cnn(obs_space, depths=(32, 64, 64), final_layer=512):
