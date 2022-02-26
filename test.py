@@ -11,7 +11,7 @@ from pytorch_wrappers import (
     PytorchLazyFrames,
 )
 import time
-from msgpack_numpy import patch as msgpack_numpy_patch
+from utils.msgpack_numpy import patch as msgpack_numpy_patch
 from train import config
 
 msgpack_numpy_patch()

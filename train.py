@@ -9,7 +9,7 @@ from sneks.envs.snek import SingleSnek
 from dqn import Network
 from msgpack_numpy import patch as msgpack_numpy_patch
 from torch.utils.tensorboard import SummaryWriter
-from pytorch_wrappers import (
+from utils.pytorch_wrappers import (
     BatchedPytorchFrameStack,
     PytorchLazyFrames,
     make_atari_deepmind,
