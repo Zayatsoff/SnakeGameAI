@@ -26,8 +26,8 @@ def nature_cnn(obs_space, depths=(32, 64, 64), final_layer=512):
     # compute shape by doing one forward pass
     with torch.no_grad():
         n_flatten = cnndqn(torch.as_tensor(obs_space.sample()[None]).float()).shape[1]
-        out = nn.Sequential(cnndqn, nn.Linear(n_flatten, final_layer), nn.ReLU())
-        return out
+        x = nn.Sequential(cnndqn, nn.Linear(n_flatten, final_layer), nn.ReLU())
+        return x
 
 
 class Network(nn.Module):
