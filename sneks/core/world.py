@@ -1,26 +1,33 @@
-'''
+"""
 
-'''
+"""
 
 import numpy as np
 import random
 
+
 class Snek:
 
-    '''
-        DIRECTIONS:
-        0: UP (North)
-        1: RIGHT (East)
-        2: DOWN (South)
-        3: LEFT (West)
+    """
+    DIRECTIONS:
+    0: UP (North)
+    1: RIGHT (East)
+    2: DOWN (South)
+    3: LEFT (West)
 
-        ACTIONS:
-        0: UP
-        1: RIGHT
-        2: DOWN
-        3: LEFT
-    '''
-    DIRECTIONS = [np.array([-1,0]), np.array([0,1]), np.array([1,0]), np.array([0,-1])]
+    ACTIONS:
+    0: UP
+    1: RIGHT
+    2: DOWN
+    3: LEFT
+    """
+
+    DIRECTIONS = [
+        np.array([-1, 0]),
+        np.array([0, 1]),
+        np.array([1, 0]),
+        np.array([0, -1]),
+    ]
 
     def __init__(self, snek_id, start_position, start_direction_index, start_length):
         self.snek_id = snek_id
@@ -32,33 +39,39 @@ class Snek:
         current_positon = np.array(start_position)
         for i in range(1, start_length):
             # Direction inverse of moving
-            current_positon = current_positon - self.DIRECTIONS[self.current_direction_index]
+            current_positon = (
+                current_positon - self.DIRECTIONS[self.current_direction_index]
+            )
             self.my_blocks.append(tuple(current_positon))
 
     def step(self, action):
         # Check if action can be performed (do nothing if in the same direction or opposite)
-        if (action != self.current_direction_index) and (action != (self.current_direction_index+2)%len(self.DIRECTIONS)):
+        if (action != self.current_direction_index) and (
+            action != (self.current_direction_index + 2) % len(self.DIRECTIONS)
+        ):
             self.current_direction_index = action
-        # Remove tail
+        # Remove tail
         tail = self.my_blocks[-1]
         self.my_blocks = self.my_blocks[:-1]
         # Check new head
-        new_head = tuple(np.array(self.my_blocks[0]) + self.DIRECTIONS[self.current_direction_index])
-        # Add new head
+        new_head = tuple(
+            np.array(self.my_blocks[0]) + self.DIRECTIONS[self.current_direction_index]
+        )
+        # Add new head
         self.my_blocks = [new_head] + self.my_blocks
         return new_head, tail
 
-class World:
 
+class World:
     def __init__(self, size, n_sneks=1, n_food=1, add_walls=False):
-        self.DEAD_REWARD = -1.0
-        self.MOVE_REWARD = 0.0
-        self.EAT_REWARD = 1.0
+        self.DEAD_REWARD = -2.0
+        self.MOVE_REWARD = -0.5
+        self.EAT_REWARD = 2.0
         self.FOOD = 64
         self.WALL = 255
         self.DIRECTIONS = Snek.DIRECTIONS
         self.add_walls = add_walls
-        # Init a numpy matrix with zeros of predefined size
+        # Init a numpy matrix with zeros of predefined size
         self.size = size
         self.world = np.zeros(size)
         # Add walls if requested
@@ -74,16 +87,19 @@ class World:
         for _ in range(n_sneks):
             snek = self.register_snek()
         # Set N foods
-        self.place_food(n_food = n_food)
+        self.place_food(n_food=n_food)
 
     def register_snek(self):
-        # Choose position (between [4 and SIZE-4])
+        # Choose position (between [4 and SIZE-4])
         # TODO better choice, no overlap
         SNEK_SIZE = 4
-        p = (random.randint(SNEK_SIZE, self.size[0]-SNEK_SIZE), random.randint(SNEK_SIZE, self.size[1]-SNEK_SIZE))
+        p = (
+            random.randint(SNEK_SIZE, self.size[0] - SNEK_SIZE),
+            random.randint(SNEK_SIZE, self.size[1] - SNEK_SIZE),
+        )
         start_direction_index = random.randrange(len(Snek.DIRECTIONS))
         # Create snek and append
-        new_snek = Snek(100 + 2*len(self.sneks), p, start_direction_index, SNEK_SIZE)
+        new_snek = Snek(100 + 2 * len(self.sneks), p, start_direction_index, SNEK_SIZE)
         self.sneks.append(new_snek)
         return new_snek
 
@@ -118,13 +134,17 @@ class World:
     def move_snek(self, actions):
         rewards = [0] * len(self.sneks)
         dones = []
-        new_food_needed = 0 #Will be used for the food update
+        new_food_needed = 0  # Will be used for the food update
         for i, (snek, action) in enumerate(zip(self.sneks, actions)):
             if not snek.alive:
                 continue
             new_snek_head, old_snek_tail = snek.step(action)
             # Check if snek is outside bounds
-            if not (0 <= new_snek_head[0] < self.size[0]) or not(0 <= new_snek_head[1] < self.size[1]) or self.world[new_snek_head[0], new_snek_head[1]] == self.WALL:
+            if (
+                not (0 <= new_snek_head[0] < self.size[0])
+                or not (0 <= new_snek_head[1] < self.size[1])
+                or self.world[new_snek_head[0], new_snek_head[1]] == self.WALL
+            ):
                 snek.my_blocks = snek.my_blocks[1:]
                 snek.alive = False
             # Check if snek eats himself
@@ -140,11 +160,14 @@ class World:
                     # Check head collided with another snek body
                     elif new_snek_head in other_snek.my_blocks[1:]:
                         snek.alive = False
-            # Check if snek eats something
-            if snek.alive and self.world[new_snek_head[0], new_snek_head[1]] == self.FOOD:
+            # Check if snek eats something
+            if (
+                snek.alive
+                and self.world[new_snek_head[0], new_snek_head[1]] == self.FOOD
+            ):
                 # Remove old food
                 self.world[new_snek_head[0], new_snek_head[1]] = 0
-                # Add tail again
+                # Add tail again
                 snek.my_blocks.append(old_snek_tail)
                 # Request to place new food. New food creation cannot be called here directly, need to update all sneks before
                 new_food_needed = new_food_needed + 1
@@ -154,8 +177,11 @@ class World:
                 rewards[i] = self.MOVE_REWARD
         # Compute done flags and assign dead rewards
         dones = [not snek.alive for snek in self.sneks]
-        rewards = [r if snek.alive else self.DEAD_REWARD for r, snek in zip(rewards, self.sneks)]
-		#Adding new food.
+        rewards = [
+            r if snek.alive else self.DEAD_REWARD
+            for r, snek in zip(rewards, self.sneks)
+        ]
+        # Adding new food.
         if new_food_needed > 0:
-            self.place_food(n_food = new_food_needed)
+            self.place_food(n_food=new_food_needed)
         return rewards, dones
