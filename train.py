@@ -31,7 +31,7 @@ config = {
     "SAVE_PATH": "./saves/SingleSnek.pack",
     "LOG_DIR": "./logs/SingleSnek",
     "LOG_EVERY": 1_000,
-    "LOAD": False,
+    "LOAD": True,
     "DEBUGG": False,
     "ATARI": False,
 }
