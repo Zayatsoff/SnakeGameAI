@@ -32,7 +32,7 @@ config = {
     "LOG_DIR": "./logs/SingleSnek",
     "LOG_EVERY": 1_000,
     "LOAD": True,
-    "DEBUGG": False,
+    "DEBUG": False,
     "ATARI": False,
 }
 msgpack_numpy_patch()
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     # Dummy runs the env in sequence whilst Subproc runs the env in parallel. Both reset env at the end.
     vec_env = (
         DummyVecEnv([make_env for _ in range(config["NUM_ENVS"])])
-        if config["DEBUGG"]
+        if config["DEBUG"]
         else SubprocVecEnv([make_env for _ in range(config["NUM_ENVS"])])
     )
     env = BatchedPytorchFrameStack(vec_env, k=4)
